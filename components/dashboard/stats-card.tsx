@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
@@ -8,10 +7,7 @@ interface StatsCardProps {
   value: string | number;
   description?: string;
   icon?: React.ReactNode;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
+  iconClassName?: string;
   className?: string;
 }
 
@@ -20,42 +16,31 @@ export const StatsCard = ({
   value,
   description,
   icon,
-  trend,
+  iconClassName,
   className,
 }: StatsCardProps) => {
   return (
-    <Card className={cn(className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        {icon && (
-          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
-            {icon}
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {(description || trend) && (
-          <div className="flex items-center gap-2 mt-1">
-            {trend && (
-              <span
-                className={cn(
-                  "text-xs font-medium",
-                  trend.isPositive ? "text-green-600" : "text-red-600"
-                )}
-              >
-                {trend.isPositive ? "+" : ""}
-                {trend.value}%
-              </span>
-            )}
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div
+      className={cn(
+        "flex flex-col rounded-xl border bg-card p-6",
+        className
+      )}
+    >
+      {icon && (
+        <div
+          className={cn(
+            "mb-4 flex h-12 w-12 items-center justify-center rounded-full",
+            iconClassName || "bg-muted text-muted-foreground"
+          )}
+        >
+          {icon}
+        </div>
+      )}
+      <div className="text-3xl font-bold text-foreground">{value}</div>
+      <div className="mt-1 text-sm text-muted-foreground">{title}</div>
+      {description && (
+        <div className="mt-0.5 text-xs text-muted-foreground">{description}</div>
+      )}
+    </div>
   );
 };

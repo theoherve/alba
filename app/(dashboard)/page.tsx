@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Header } from "@/components/layout/header";
 import { StatsCard } from "@/components/dashboard/stats-card";
-import { ActivityFeed, type ActivityItem } from "@/components/dashboard/activity-feed";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConversationCard, type ConversationStatus } from "@/components/dashboard/conversation-card";
+import { PropertyCard } from "@/components/dashboard/property-card";
 import { Button } from "@/components/ui/button";
 import { useOrganizationStore } from "@/hooks/use-organization";
 import { organizationsService } from "@/services/organizations";
@@ -14,34 +13,31 @@ import { propertiesService } from "@/services/properties";
 import { conversationsService } from "@/services/conversations";
 import {
   MessageSquare,
-  Bot,
-  Send,
-  AlertTriangle,
+  AlertCircle,
   Home,
+  Bot,
   Plus,
-  Mail,
-  ArrowRight,
+  ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
-import type { User } from "@/types/database";
+import type { User, Property, Conversation, ConversationWithProperty } from "@/types/database";
 
 const DashboardPage = () => {
   const { currentOrganization, setCurrentOrganization, setOrganizations } =
     useOrganizationStore();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [conversations, setConversations] = useState<ConversationWithProperty[]>([]);
 
   // Stats
   const [stats, setStats] = useState({
-    conversations: 0,
-    aiResponses: 0,
-    autoSent: 0,
-    escalations: 0,
-    properties: 0,
-    unreadMessages: 0,
+    messagesToday: 0,
+    needsReview: 0,
+    activeProperties: 0,
+    aiResponseRate: 0,
+    autoRepliedToday: 0,
   });
-
-  // Activity
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -81,136 +77,73 @@ const DashboardPage = () => {
       const supabase = createClient();
 
       try {
-        // Get conversations count
-        const conversations = await conversationsService.getByOrganization(
+        // Get properties
+        const propertiesList = await propertiesService.getByOrganization(
+          supabase,
+          currentOrganization.id
+        );
+        setProperties(propertiesList);
+
+        // Get conversations with property data
+        const conversationsList = await conversationsService.getByOrganization(
           supabase,
           currentOrganization.id
         );
 
-        // Get unread count
-        const unreadCount = await conversationsService.getUnreadCount(
-          supabase,
-          currentOrganization.id
-        );
+        // Fetch property data for each conversation
+        const conversationsWithProperty: ConversationWithProperty[] = [];
+        for (const conv of conversationsList) {
+          const property = propertiesList.find((p) => p.id === conv.property_id) || null;
+          conversationsWithProperty.push({
+            ...conv,
+            property,
+          });
+        }
+        setConversations(conversationsWithProperty);
 
-        // Get properties count
-        const propertiesCount = await propertiesService.countByOrganization(
-          supabase,
-          currentOrganization.id
-        );
+        // Get today's date bounds
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // Get AI stats (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        // Get messages count today
+        const { count: messagesToday } = await supabase
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", today.toISOString())
+          .lt("created_at", tomorrow.toISOString());
 
-        const { data: aiResponses } = await supabase
+        // Get conversations needing review (active with unread messages)
+        const needsReviewCount = conversationsList.filter(
+          (c) => c.status === "active" && c.unread_count > 0
+        ).length;
+
+        // Get AI response stats
+        const { data: aiResponsesData } = await supabase
           .from("ai_responses")
-          .select("action_taken")
-          .gte("created_at", thirtyDaysAgo.toISOString());
+          .select("action_taken, created_at")
+          .gte("created_at", today.toISOString());
 
-        const responses = aiResponses as { action_taken: string }[] | null;
-        const aiStats = {
-          total: responses?.length || 0,
-          autoSent: responses?.filter((r) => r.action_taken === "auto_sent").length || 0,
-          escalations: responses?.filter((r) => r.action_taken === "escalated").length || 0,
-        };
+        const aiResponses = aiResponsesData || [];
+        const autoRepliedToday = aiResponses.filter(
+          (r) => r.action_taken === "auto_sent"
+        ).length;
+
+        // Calculate AI response rate
+        const totalAiResponses = aiResponses.length;
+        const aiResponseRate =
+          totalAiResponses > 0
+            ? Math.round((autoRepliedToday / totalAiResponses) * 100)
+            : 0;
 
         setStats({
-          conversations: conversations.length,
-          aiResponses: aiStats.total,
-          autoSent: aiStats.autoSent,
-          escalations: aiStats.escalations,
-          properties: propertiesCount,
-          unreadMessages: unreadCount,
+          messagesToday: messagesToday || 0,
+          needsReview: needsReviewCount,
+          activeProperties: propertiesList.filter((p) => p.ai_enabled).length,
+          aiResponseRate: aiResponseRate,
+          autoRepliedToday: autoRepliedToday,
         });
-
-        // Build activity feed from recent conversations and messages
-        const recentActivities: ActivityItem[] = [];
-
-        // Get recent messages
-        const { data: recentMessagesData } = await supabase
-          .from("messages")
-          .select(`
-            id,
-            content,
-            source,
-            created_at,
-            conversation:conversations(guest_name, property:properties(name))
-          `)
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        type MessageWithConv = {
-          id: string;
-          content: string;
-          source: string;
-          created_at: string;
-          conversation: { guest_name: string | null; property: { name: string } | null } | null;
-        };
-        const recentMessages = recentMessagesData as MessageWithConv[] | null;
-
-        if (recentMessages) {
-          for (const msg of recentMessages) {
-            const conv = msg.conversation;
-            
-            if (msg.source === "guest") {
-              recentActivities.push({
-                id: msg.id,
-                type: "message",
-                title: `Message de ${conv?.guest_name || "un voyageur"}`,
-                description: conv?.property?.name || undefined,
-                timestamp: msg.created_at,
-              });
-            } else if (msg.source === "ai") {
-              recentActivities.push({
-                id: msg.id,
-                type: "ai_response",
-                title: "Réponse IA envoyée",
-                description: conv?.guest_name || undefined,
-                timestamp: msg.created_at,
-              });
-            }
-          }
-        }
-
-        // Get recent escalations
-        const { data: recentEscalationsData } = await supabase
-          .from("ai_responses")
-          .select(`
-            id,
-            created_at,
-            conversation:conversations(guest_name)
-          `)
-          .eq("action_taken", "escalated")
-          .order("created_at", { ascending: false })
-          .limit(5);
-
-        type EscalationWithConv = {
-          id: string;
-          created_at: string;
-          conversation: { guest_name: string | null } | null;
-        };
-        const recentEscalations = recentEscalationsData as EscalationWithConv[] | null;
-
-        if (recentEscalations) {
-          for (const esc of recentEscalations) {
-            const conv = esc.conversation;
-            recentActivities.push({
-              id: esc.id,
-              type: "escalation",
-              title: "Escalade IA",
-              description: conv?.guest_name || undefined,
-              timestamp: esc.created_at,
-            });
-          }
-        }
-
-        // Sort by timestamp
-        recentActivities.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-
-        setActivities(recentActivities.slice(0, 10));
       } catch (error) {
         console.error("Error loading stats:", error);
       } finally {
@@ -221,137 +154,186 @@ const DashboardPage = () => {
     loadStats();
   }, [currentOrganization]);
 
-  const quickActions = [
-    {
-      href: "/inbox",
-      icon: <MessageSquare className="h-5 w-5" />,
-      label: "Voir les messages",
-      badge: stats.unreadMessages > 0 ? stats.unreadMessages : undefined,
-    },
-    {
-      href: "/properties/new",
-      icon: <Plus className="h-5 w-5" />,
-      label: "Ajouter un logement",
-    },
-    {
-      href: "/settings/gmail",
-      icon: <Mail className="h-5 w-5" />,
-      label: "Connecter Gmail",
-    },
-  ];
+  const getConversationStatus = (conversation: Conversation): ConversationStatus => {
+    if (conversation.status === "resolved") return "resolved";
+    if (conversation.status === "archived") return "resolved";
+    // For active conversations, check if there are unread messages
+    if (conversation.unread_count > 0) return "needs_review";
+    return "ai_replied";
+  };
+
+  // Get conversations needing attention (active with unread or recent)
+  const attentionConversations = conversations
+    .filter((c) => c.status === "active")
+    .slice(0, 5);
+
+  // Get top properties with their stats
+  const topProperties = properties.slice(0, 3);
+
+  const firstName = user?.full_name?.split(" ")[0] || "User";
 
   return (
     <div className="flex h-screen flex-col">
-      <Header user={user} title="Tableau de bord" />
+      {/* Header */}
+      <header className="flex items-center justify-between border-b bg-card px-8 py-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {firstName}. Here&apos;s what&apos;s happening today.
+          </p>
+        </div>
+        <Link href="/properties/new">
+          <Button className="cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Property
+          </Button>
+        </Link>
+      </header>
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="mx-auto max-w-6xl space-y-6">
-          {/* Welcome */}
-          <div>
-            <h1 className="text-2xl font-semibold">
-              Bienvenue{user?.full_name ? `, ${user.full_name}` : ""} !
-            </h1>
-            <p className="text-muted-foreground">
-              Voici un aperçu de votre activité sur Alba
-            </p>
-          </div>
-
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto p-8">
+        <div className="mx-auto max-w-7xl space-y-8">
           {/* Stats Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard
-              title="Conversations"
-              value={stats.conversations}
-              icon={<MessageSquare className="h-4 w-4 text-muted-foreground" />}
-              description="Total"
+              title="Messages Today"
+              value={stats.messagesToday}
+              icon={<MessageSquare className="h-6 w-6" />}
+              iconClassName="bg-gray-100 text-gray-600"
             />
             <StatsCard
-              title="Réponses IA"
-              value={stats.aiResponses}
-              icon={<Bot className="h-4 w-4 text-muted-foreground" />}
-              description="30 derniers jours"
+              title="Needs Review"
+              value={stats.needsReview}
+              icon={<AlertCircle className="h-6 w-6" />}
+              iconClassName="bg-red-100 text-red-600"
             />
             <StatsCard
-              title="Envois automatiques"
-              value={stats.autoSent}
-              icon={<Send className="h-4 w-4 text-muted-foreground" />}
-              description="30 derniers jours"
+              title="Active Properties"
+              value={stats.activeProperties}
+              icon={<Home className="h-6 w-6" />}
+              iconClassName="bg-gray-100 text-gray-600"
             />
             <StatsCard
-              title="Escalades"
-              value={stats.escalations}
-              icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
-              description="30 derniers jours"
+              title="AI Response Rate"
+              value={stats.aiResponseRate > 0 ? `${stats.aiResponseRate}%` : "—"}
+              description={stats.autoRepliedToday > 0 ? `${stats.autoRepliedToday} auto-replied today` : undefined}
+              icon={<Bot className="h-6 w-6" />}
+              iconClassName="bg-emerald-100 text-emerald-600"
             />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions rapides</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {quickActions.map((action) => (
-                  <Link key={action.href} href={action.href}>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-between"
-                    >
-                      <span className="flex items-center gap-2">
-                        {action.icon}
-                        {action.label}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        {action.badge && (
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                            {action.badge}
-                          </span>
-                        )}
-                        <ArrowRight className="h-4 w-4" />
-                      </span>
-                    </Button>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
+          {/* Two Column Layout */}
+          <div className="grid gap-8 lg:grid-cols-5">
+            {/* Needs Your Attention - Takes 3 columns */}
+            <div className="lg:col-span-3">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Needs Your Attention
+                </h2>
+                <Link
+                  href="/inbox"
+                  className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+                >
+                  View all
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </div>
 
-            {/* Activity Feed */}
+              <div className="space-y-3">
+                {attentionConversations.length > 0 ? (
+                  attentionConversations.map((conversation) => (
+                    <ConversationCard
+                      key={conversation.id}
+                      id={conversation.id}
+                      guestName={conversation.guest_name || "Guest"}
+                      propertyName={conversation.property?.name || "Property"}
+                      message="Click to view conversation"
+                      timestamp={conversation.last_message_at || conversation.updated_at}
+                      status={getConversationStatus(conversation)}
+                    />
+                  ))
+                ) : (
+                  <div className="rounded-xl border bg-card p-8 text-center">
+                    <MessageSquare className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      No conversations need your attention
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Status Card */}
+              <div className="mt-6 flex items-center gap-3 rounded-xl border bg-card p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                  <Bot className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-foreground">AI Status</h4>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    All systems operational
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Properties - Takes 2 columns */}
             <div className="lg:col-span-2">
-              <ActivityFeed activities={activities} isLoading={isLoading} />
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Properties</h2>
+                <Link
+                  href="/properties"
+                  className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+                >
+                  View all
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                {topProperties.length > 0 ? (
+                  topProperties.map((property) => {
+                    const propertyConversations = conversations.filter(
+                      (c) => c.property_id === property.id
+                    );
+                    const activeConversations = propertyConversations.filter(
+                      (c) => c.status === "active"
+                    ).length;
+                    const pendingCount = propertyConversations.filter(
+                      (c) => c.status === "active" && c.unread_count > 0
+                    ).length;
+
+                    return (
+                      <PropertyCard
+                        key={property.id}
+                        id={property.id}
+                        name={property.name}
+                        address={property.address || "No address"}
+                        activeConversations={activeConversations}
+                        pendingCount={pendingCount}
+                        aiActive={property.ai_enabled}
+                      />
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border bg-card p-8 text-center">
+                    <Home className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      No properties yet
+                    </p>
+                  </div>
+                )}
+
+                {/* Add Property Button */}
+                <Link href="/properties/new" className="block">
+                  <button className="w-full cursor-pointer rounded-xl border-2 border-dashed border-gray-200 bg-white p-4 text-sm font-medium text-muted-foreground transition-colors hover:border-gray-300 hover:bg-muted/50">
+                    <Plus className="mr-2 inline h-4 w-4" />
+                    Add Property
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
-
-          {/* Properties Summary */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Home className="h-5 w-5" />
-                Mes logements ({stats.properties})
-              </CardTitle>
-              <Link href="/properties">
-                <Button variant="outline" size="sm">
-                  Voir tous
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </CardHeader>
-            {stats.properties === 0 && (
-              <CardContent>
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Home className="mb-2 h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Aucun logement configuré
-                  </p>
-                  <Link href="/properties/new" className="mt-4">
-                    <Button size="sm">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ajouter un logement
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            )}
-          </Card>
         </div>
       </div>
     </div>
