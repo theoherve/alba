@@ -35,7 +35,12 @@ const SignUpPage = () => {
     setIsLoading(false);
 
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      const isEmailSendError =
+        /confirmation email|error sending|email.*(send|delivery)/i.test(error.message);
+      const text = isEmailSendError
+        ? "L'envoi de l'email de vérification a échoué. Vérifiez la config SMTP (Dashboard Supabase → Auth → SMTP) ou que l'adresse est dans l'équipe du projet si vous n'utilisez pas de SMTP personnalisé."
+        : error.message;
+      setMessage({ type: "error", text });
       return;
     }
 
