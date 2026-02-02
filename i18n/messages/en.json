@@ -1,0 +1,85 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "back": "Back"
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign up",
+    "logout": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "magicLinkSent": "Check your email for the login link",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "inbox": "Messages",
+    "properties": "Properties",
+    "team": "Team",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to Alba",
+    "stats": {
+      "conversations": "Conversations",
+      "aiResponses": "AI Responses",
+      "autoSent": "Auto-sent",
+      "escalations": "Escalations"
+    },
+    "quickActions": "Quick Actions",
+    "recentActivity": "Recent Activity"
+  },
+  "inbox": {
+    "title": "Messages",
+    "noConversations": "No conversations",
+    "newMessage": "New message",
+    "reply": "Reply",
+    "markResolved": "Mark as resolved",
+    "archive": "Archive",
+    "filters": {
+      "all": "All",
+      "active": "Active",
+      "resolved": "Resolved"
+    }
+  },
+  "properties": {
+    "title": "Properties",
+    "addProperty": "Add property",
+    "noProperties": "No properties",
+    "form": {
+      "name": "Name",
+      "address": "Address",
+      "description": "Description",
+      "checkInInstructions": "Check-in instructions",
+      "houseRules": "House rules",
+      "amenities": "Amenities"
+    }
+  },
+  "ai": {
+    "suggestion": "Alba AI Suggestion",
+    "confidence": "Confidence",
+    "approve": "Approve",
+    "edit": "Edit",
+    "reject": "Reject",
+    "generating": "Generating..."
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "organization": "Organization",
+    "aiConfig": "AI Configuration",
+    "gmail": "Gmail Connection",
+    "notifications": "Notifications"
+  }
+}

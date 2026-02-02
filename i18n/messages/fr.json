@@ -1,0 +1,85 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "confirm": "Confirmer",
+    "back": "Retour"
+  },
+  "auth": {
+    "login": "Connexion",
+    "signup": "Créer un compte",
+    "logout": "Déconnexion",
+    "email": "Email",
+    "password": "Mot de passe",
+    "magicLinkSent": "Vérifiez votre email pour le lien de connexion",
+    "noAccount": "Pas encore de compte ?",
+    "hasAccount": "Déjà un compte ?"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "inbox": "Messages",
+    "properties": "Logements",
+    "team": "Équipe",
+    "settings": "Paramètres"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue sur Alba",
+    "stats": {
+      "conversations": "Conversations",
+      "aiResponses": "Réponses IA",
+      "autoSent": "Envois auto",
+      "escalations": "Escalades"
+    },
+    "quickActions": "Actions rapides",
+    "recentActivity": "Activité récente"
+  },
+  "inbox": {
+    "title": "Messages",
+    "noConversations": "Aucune conversation",
+    "newMessage": "Nouveau message",
+    "reply": "Répondre",
+    "markResolved": "Marquer comme résolu",
+    "archive": "Archiver",
+    "filters": {
+      "all": "Tous",
+      "active": "Actifs",
+      "resolved": "Résolus"
+    }
+  },
+  "properties": {
+    "title": "Logements",
+    "addProperty": "Ajouter un logement",
+    "noProperties": "Aucun logement",
+    "form": {
+      "name": "Nom",
+      "address": "Adresse",
+      "description": "Description",
+      "checkInInstructions": "Instructions d'arrivée",
+      "houseRules": "Règlement",
+      "amenities": "Équipements"
+    }
+  },
+  "ai": {
+    "suggestion": "Suggestion Alba IA",
+    "confidence": "Confiance",
+    "approve": "Approuver",
+    "edit": "Modifier",
+    "reject": "Rejeter",
+    "generating": "Génération en cours..."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profile": "Profil",
+    "organization": "Organisation",
+    "aiConfig": "Configuration IA",
+    "gmail": "Connexion Gmail",
+    "notifications": "Notifications"
+  }
+}
