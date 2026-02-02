@@ -16,17 +16,17 @@ export const updateSession = async (request: NextRequest) => {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
           supabaseResponse = NextResponse.next({
             request,
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   // IMPORTANT: Do not remove auth.getUser()
@@ -36,14 +36,25 @@ export const updateSession = async (request: NextRequest) => {
   } = await supabase.auth.getUser();
 
   // Protect dashboard routes
-  const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard") ||
+  const isDashboardRoute =
+    request.nextUrl.pathname.startsWith("/dashboard") ||
     request.nextUrl.pathname.startsWith("/inbox") ||
     request.nextUrl.pathname.startsWith("/properties") ||
     request.nextUrl.pathname.startsWith("/settings") ||
     request.nextUrl.pathname.startsWith("/team");
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/login") ||
+  const isOnboardingRoute = request.nextUrl.pathname.startsWith("/onboarding");
+
+  const isAuthRoute =
+    request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup");
+
+  if (isOnboardingRoute && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("redirect", request.nextUrl.pathname);
+    return NextResponse.redirect(url);
+  }
 
   if (isDashboardRoute && !user) {
     const url = request.nextUrl.clone();
