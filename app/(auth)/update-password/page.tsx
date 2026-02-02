@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,11 +11,9 @@ import { Logo } from "@/components/shared/logo";
 
 const MIN_PASSWORD_LENGTH = 6;
 
-const SignUpPage = () => {
-  const [email, setEmail] = useState("");
+const UpdatePasswordPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const router = useRouter();
@@ -43,38 +40,16 @@ const SignUpPage = () => {
 
     const supabase = createClient();
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?onboarding=true`,
-      },
-    });
+    const { error } = await supabase.auth.updateUser({ password });
 
     setIsLoading(false);
 
     if (error) {
-      const isEmailSendError =
-        /confirmation email|error sending|email.*(send|delivery)/i.test(error.message);
-      const text = isEmailSendError
-        ? "L'envoi de l'email de vérification a échoué. Vérifiez la config SMTP (Dashboard Supabase → Auth → SMTP) ou que l'adresse est dans l'équipe du projet si vous n'utilisez pas de SMTP personnalisé."
-        : error.message;
-      setMessage({ type: "error", text });
+      setMessage({ type: "error", text: error.message });
       return;
     }
 
-    // Si Supabase exige la confirmation email, l'utilisateur n'est pas connecté
-    if (data.user && !data.session) {
-      setMessage({
-        type: "success",
-        text: "Vérifiez votre email pour confirmer votre inscription, puis connectez-vous avec votre mot de passe.",
-      });
-      return;
-    }
-
-    // Inscription réussie et session active (confirmation email désactivée)
-    router.push("/onboarding");
+    router.push("/dashboard");
     router.refresh();
   };
 
@@ -85,43 +60,15 @@ const SignUpPage = () => {
           <div className="flex justify-center">
             <Logo />
           </div>
-          <CardTitle className="text-2xl font-semibold">Créer un compte</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Nouveau mot de passe</CardTitle>
           <CardDescription>
-            Commencez à automatiser votre conciergerie Airbnb
+            Choisissez un nouveau mot de passe pour votre compte
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Nom complet</Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="Jean Dupont"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                disabled={isLoading}
-                autoComplete="name"
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="vous@exemple.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-                autoComplete="email"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <Label htmlFor="password">Nouveau mot de passe</Label>
               <Input
                 id="password"
                 type="password"
@@ -132,6 +79,7 @@ const SignUpPage = () => {
                 disabled={isLoading}
                 autoComplete="new-password"
                 minLength={MIN_PASSWORD_LENGTH}
+                autoFocus
               />
               <p className="text-xs text-muted-foreground">
                 Minimum {MIN_PASSWORD_LENGTH} caractères
@@ -167,32 +115,13 @@ const SignUpPage = () => {
             )}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Création en cours..." : "Créer mon compte"}
+              {isLoading ? "Mise à jour..." : "Mettre à jour le mot de passe"}
             </Button>
           </form>
-
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            En créant un compte, vous acceptez nos{" "}
-            <Link href="/terms" className="text-primary hover:underline">
-              conditions d&apos;utilisation
-            </Link>{" "}
-            et notre{" "}
-            <Link href="/privacy" className="text-primary hover:underline">
-              politique de confidentialité
-            </Link>
-            .
-          </p>
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            Déjà un compte ?{" "}
-            <Link href="/login" className="text-primary hover:underline">
-              Se connecter
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default SignUpPage;
+export default UpdatePasswordPage;
