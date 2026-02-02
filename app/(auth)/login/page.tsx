@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,10 @@ import { Loading } from "@/components/shared/loading";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
 
@@ -24,13 +26,8 @@ const LoginForm = () => {
     setMessage(null);
 
     const supabase = createClient();
-    
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
-      },
-    });
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     setIsLoading(false);
 
@@ -39,10 +36,8 @@ const LoginForm = () => {
       return;
     }
 
-    setMessage({
-      type: "success",
-      text: "Vérifiez votre email pour le lien de connexion.",
-    });
+    router.push(redirect);
+    router.refresh();
   };
 
   return (
@@ -53,7 +48,7 @@ const LoginForm = () => {
         </div>
         <CardTitle className="text-2xl font-semibold">Connexion</CardTitle>
         <CardDescription>
-          Entrez votre email pour recevoir un lien de connexion
+          Entrez votre email et votre mot de passe pour vous connecter
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -73,6 +68,28 @@ const LoginForm = () => {
             />
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Mot de passe</Label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-muted-foreground hover:text-primary hover:underline"
+              >
+                Mot de passe oublié ?
+              </Link>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading}
+              autoComplete="current-password"
+            />
+          </div>
+
           {message && (
             <div
               className={`rounded-md p-3 text-sm ${
@@ -87,7 +104,7 @@ const LoginForm = () => {
           )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Envoi en cours..." : "Envoyer le lien"}
+            {isLoading ? "Connexion..." : "Se connecter"}
           </Button>
         </form>
 
