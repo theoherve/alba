@@ -18,15 +18,17 @@ export const conversationsService = {
   async getByOrganization(
     supabase: SupabaseClient<Database>,
     organizationId: string,
-    filters?: ConversationFilters
+    filters?: ConversationFilters,
   ): Promise<ConversationWithProperty[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("conversations")
-      .select(`
+      .select(
+        `
         *,
         property:properties(id, name)
-      `)
+      `,
+      )
       .eq("organization_id", organizationId)
       .order("last_message_at", { ascending: false, nullsFirst: false });
 
@@ -44,7 +46,7 @@ export const conversationsService = {
 
     if (filters?.search) {
       query = query.or(
-        `guest_name.ilike.%${filters.search}%,guest_email.ilike.%${filters.search}%`
+        `guest_name.ilike.%${filters.search}%,guest_email.ilike.%${filters.search}%`,
       );
     }
 
@@ -56,7 +58,7 @@ export const conversationsService = {
 
   async getById(
     supabase: SupabaseClient<Database>,
-    id: string
+    id: string,
   ): Promise<Conversation | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
@@ -75,16 +77,18 @@ export const conversationsService = {
 
   async getWithMessages(
     supabase: SupabaseClient<Database>,
-    id: string
+    id: string,
   ): Promise<ConversationWithMessages | null> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from("conversations")
-      .select(`
+      .select(
+        `
         *,
         property:properties(*),
         messages(*)
-      `)
+      `,
+      )
       .eq("id", id)
       .order("created_at", { referencedTable: "messages", ascending: true })
       .single();
@@ -100,7 +104,7 @@ export const conversationsService = {
   async updateStatus(
     supabase: SupabaseClient<Database>,
     id: string,
-    status: ConversationStatus
+    status: ConversationStatus,
   ): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
@@ -113,7 +117,7 @@ export const conversationsService = {
 
   async markAsRead(
     supabase: SupabaseClient<Database>,
-    id: string
+    id: string,
   ): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
@@ -126,7 +130,7 @@ export const conversationsService = {
 
   async getUnreadCount(
     supabase: SupabaseClient<Database>,
-    organizationId: string
+    organizationId: string,
   ): Promise<number> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
@@ -139,19 +143,33 @@ export const conversationsService = {
 
     return (data || []).reduce(
       (sum: number, conv: { unread_count: number }) => sum + conv.unread_count,
-      0
+      0,
     );
   },
 
   async assignProperty(
     supabase: SupabaseClient<Database>,
     conversationId: string,
-    propertyId: string
+    propertyId: string,
   ): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from("conversations")
       .update({ property_id: propertyId })
+      .eq("id", conversationId);
+
+    if (error) throw error;
+  },
+
+  async updateAiDisabled(
+    supabase: SupabaseClient<Database>,
+    conversationId: string,
+    aiDisabled: boolean,
+  ): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from("conversations")
+      .update({ ai_disabled: aiDisabled })
       .eq("id", conversationId);
 
     if (error) throw error;

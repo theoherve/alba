@@ -4,7 +4,7 @@ import type { Database, AIResponse, AIAction } from "@/types/database";
 export const aiResponsesService = {
   async getByConversation(
     supabase: SupabaseClient<Database>,
-    conversationId: string
+    conversationId: string,
   ): Promise<AIResponse[]> {
     const { data, error } = await supabase
       .from("ai_responses")
@@ -18,7 +18,7 @@ export const aiResponsesService = {
 
   async getLatestSuggestion(
     supabase: SupabaseClient<Database>,
-    conversationId: string
+    conversationId: string,
   ): Promise<AIResponse | null> {
     const { data, error } = await supabase
       .from("ai_responses")
@@ -34,6 +34,45 @@ export const aiResponsesService = {
     return data;
   },
 
+  async getLatestByConversation(
+    supabase: SupabaseClient<Database>,
+    conversationId: string,
+  ): Promise<AIResponse | null> {
+    const { data, error } = await supabase
+      .from("ai_responses")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getLatestByConversations(
+    supabase: SupabaseClient<Database>,
+    conversationIds: string[],
+  ): Promise<Map<string, AIResponse>> {
+    if (conversationIds.length === 0) return new Map();
+
+    const { data, error } = await supabase
+      .from("ai_responses")
+      .select("*")
+      .in("conversation_id", conversationIds)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    const map = new Map<string, AIResponse>();
+    for (const resp of data || []) {
+      if (!map.has(resp.conversation_id)) {
+        map.set(resp.conversation_id, resp);
+      }
+    }
+    return map;
+  },
+
   async create(
     supabase: SupabaseClient<Database>,
     data: {
@@ -47,7 +86,7 @@ export const aiResponsesService = {
       prompt_tokens?: number;
       completion_tokens?: number;
       response_time_ms?: number;
-    }
+    },
   ): Promise<AIResponse> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: response, error } = await (supabase as any)
@@ -74,7 +113,7 @@ export const aiResponsesService = {
   async updateFeedback(
     supabase: SupabaseClient<Database>,
     id: string,
-    feedback: "approved" | "edited" | "rejected"
+    feedback: "approved" | "edited" | "rejected",
   ): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
@@ -89,7 +128,7 @@ export const aiResponsesService = {
     supabase: SupabaseClient<Database>,
     organizationId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<{
     total: number;
     auto_sent: number;
@@ -100,18 +139,23 @@ export const aiResponsesService = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: rawData, error } = await (supabase as any)
       .from("ai_responses")
-      .select(`
+      .select(
+        `
         action_taken,
         confidence_score,
         conversation:conversations!inner(organization_id)
-      `)
+      `,
+      )
       .eq("conversation.organization_id", organizationId)
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
 
     if (error) throw error;
 
-    type ResponseData = { action_taken: string; confidence_score: number | null };
+    type ResponseData = {
+      action_taken: string;
+      confidence_score: number | null;
+    };
     const data = (rawData || []) as ResponseData[];
 
     const stats = {
@@ -121,7 +165,8 @@ export const aiResponsesService = {
       escalated: data.filter((r) => r.action_taken === "escalated").length,
       avg_confidence:
         data.length > 0
-          ? data.reduce((sum, r) => sum + (r.confidence_score || 0), 0) / data.length
+          ? data.reduce((sum, r) => sum + (r.confidence_score || 0), 0) /
+            data.length
           : 0,
     };
 

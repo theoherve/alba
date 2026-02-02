@@ -4,7 +4,7 @@ import type { Database, Message, MessageSource } from "@/types/database";
 export const messagesService = {
   async getByConversation(
     supabase: SupabaseClient<Database>,
-    conversationId: string
+    conversationId: string,
   ): Promise<Message[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
@@ -26,7 +26,7 @@ export const messagesService = {
       sent_by_user_id?: string;
       gmail_message_id?: string;
       metadata?: Record<string, unknown>;
-    }
+    },
   ): Promise<Message> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: message, error } = await (supabase as any)
@@ -50,7 +50,7 @@ export const messagesService = {
   async updateStatus(
     supabase: SupabaseClient<Database>,
     id: string,
-    status: "pending" | "sent" | "delivered" | "failed"
+    status: "pending" | "sent" | "delivered" | "failed",
   ): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
@@ -64,7 +64,7 @@ export const messagesService = {
   async getLatestByConversation(
     supabase: SupabaseClient<Database>,
     conversationId: string,
-    limit = 10
+    limit = 10,
   ): Promise<Message[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
@@ -76,5 +76,29 @@ export const messagesService = {
 
     if (error) throw error;
     return (data || []).reverse(); // Return in chronological order
+  },
+
+  async getLastMessageByConversations(
+    supabase: SupabaseClient<Database>,
+    conversationIds: string[],
+  ): Promise<Map<string, Message>> {
+    if (conversationIds.length === 0) return new Map();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from("messages")
+      .select("*")
+      .in("conversation_id", conversationIds)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    const map = new Map<string, Message>();
+    for (const msg of data || []) {
+      if (!map.has(msg.conversation_id)) {
+        map.set(msg.conversation_id, msg);
+      }
+    }
+    return map;
   },
 };
