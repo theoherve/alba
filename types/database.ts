@@ -11,7 +11,11 @@ export type PlanType = "free" | "starter" | "pro" | "enterprise";
 export type MessageSource = "guest" | "host" | "ai" | "system";
 export type MessageStatus = "pending" | "sent" | "delivered" | "failed";
 export type AIAction = "auto_sent" | "suggested" | "escalated";
-export type NotificationType = "escalation" | "new_message" | "sync_error" | "system";
+export type NotificationType =
+  | "escalation"
+  | "new_message"
+  | "sync_error"
+  | "system";
 export type NotificationChannel = "in_app" | "email" | "both";
 export type ConversationStatus = "active" | "archived" | "resolved";
 export type SupportedLanguage = "fr" | "en";
@@ -117,6 +121,7 @@ export interface Conversation {
   language: SupportedLanguage;
   last_message_at: string | null;
   unread_count: number;
+  ai_disabled?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -202,12 +207,19 @@ export interface Database {
       };
       memberships: {
         Row: Membership;
-        Insert: Partial<Membership> & { user_id: string; organization_id: string };
+        Insert: Partial<Membership> & {
+          user_id: string;
+          organization_id: string;
+        };
         Update: Partial<Membership>;
       };
       gmail_connections: {
         Row: GmailConnection;
-        Insert: Partial<GmailConnection> & { organization_id: string; user_id: string; email: string };
+        Insert: Partial<GmailConnection> & {
+          organization_id: string;
+          user_id: string;
+          email: string;
+        };
         Update: Partial<GmailConnection>;
       };
       properties: {
@@ -222,27 +234,47 @@ export interface Database {
       };
       messages: {
         Row: Message;
-        Insert: Partial<Message> & { conversation_id: string; source: MessageSource; content: string };
+        Insert: Partial<Message> & {
+          conversation_id: string;
+          source: MessageSource;
+          content: string;
+        };
         Update: Partial<Message>;
       };
       ai_responses: {
         Row: AIResponse;
-        Insert: Partial<AIResponse> & { conversation_id: string; generated_content: string; action_taken: AIAction };
+        Insert: Partial<AIResponse> & {
+          conversation_id: string;
+          generated_content: string;
+          action_taken: AIAction;
+        };
         Update: Partial<AIResponse>;
       };
       ai_knowledge_base: {
         Row: AIKnowledgeBase;
-        Insert: Partial<AIKnowledgeBase> & { organization_id: string; question_pattern: string; approved_response: string };
+        Insert: Partial<AIKnowledgeBase> & {
+          organization_id: string;
+          question_pattern: string;
+          approved_response: string;
+        };
         Update: Partial<AIKnowledgeBase>;
       };
       notifications: {
         Row: Notification;
-        Insert: Partial<Notification> & { user_id: string; type: NotificationType; title: string };
+        Insert: Partial<Notification> & {
+          user_id: string;
+          type: NotificationType;
+          title: string;
+        };
         Update: Partial<Notification>;
       };
       usage_metrics: {
         Row: UsageMetrics;
-        Insert: Partial<UsageMetrics> & { organization_id: string; period_start: string; period_end: string };
+        Insert: Partial<UsageMetrics> & {
+          organization_id: string;
+          period_start: string;
+          period_end: string;
+        };
         Update: Partial<UsageMetrics>;
       };
     };

@@ -9,9 +9,9 @@ interface LogoProps {
 
 export const Logo = ({ className, showText = true, size = "md" }: LogoProps) => {
   const sizeClasses = {
-    sm: "h-6 w-6",
-    md: "h-8 w-8",
-    lg: "h-10 w-10",
+    sm: "h-8 w-8 text-sm",
+    md: "h-9 w-9 text-sm",
+    lg: "h-10 w-10 text-base",
   };
 
   const textSizeClasses = {
@@ -21,10 +21,10 @@ export const Logo = ({ className, showText = true, size = "md" }: LogoProps) => 
   };
 
   return (
-    <Link href="/" className={cn("flex items-center gap-2", className)}>
+    <Link href="/" className={cn("flex items-center gap-3", className)}>
       <div
         className={cn(
-          "flex items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold",
+          "flex items-center justify-center rounded-full bg-primary text-primary-foreground font-bold",
           sizeClasses[size]
         )}
         aria-hidden="true"
@@ -32,7 +32,7 @@ export const Logo = ({ className, showText = true, size = "md" }: LogoProps) => 
         A
       </div>
       {showText && (
-        <span className={cn("font-semibold tracking-tight", textSizeClasses[size])}>
+        <span className={cn("font-semibold text-foreground", textSizeClasses[size])}>
           Alba
         </span>
       )}

@@ -43,7 +43,11 @@ export const MessageThread = ({
     <ScrollArea className="flex-1 p-4">
       <div className="space-y-4">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble
+            key={message.id}
+            message={message}
+            guestName={undefined}
+          />
         ))}
 
         {/* AI Suggestion Card */}
